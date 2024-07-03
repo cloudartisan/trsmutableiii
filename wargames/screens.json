@@ -1,0 +1,204 @@
+[
+    {
+        "lines": [
+            ["PDP 11/270 PRP TIP # 45", "", "TTY 34/984"],
+            ["WELCOME TO THE SEATTLE PUBLIC SCHOOL DISTRICT DATANET", "", ""],
+            ["", "", ""],
+            ["PLEASE LOGON WITH USER PASSWORD: pencil", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["PLEASE ENTER STUDENT NAME: Lightman, David L.", "", ""],
+            ["", "", ""],
+            ["CLASS  COURSE    GRADE  TEACHER    P  ROOM", "", ""],
+            ["S-202  BIO 2     F      LIGGET     3  214", "", ""],
+            ["E-314  ENG 11B   D      TURMAN     5  172", "", ""],
+            ["H-221  W.H. 11B  C      DWYMER     2  108", "", ""],
+            ["M-106  TRIG 2    B      DICKERSON  4  315", "", ""],
+            ["PE-02  PHYS ED   C      COMSTOCK   1  GYM", "", ""],
+            ["M-122  CALC 1    B      LOGAN      6  240", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["PLEASE ENTER STUDENT NAME: Mack, Jennifer K.", "", ""],
+            ["", "", ""],
+            ["CLASS  COURSE    GRADE  TEACHER    P  ROOM", "", ""],
+            ["S-202  BIO 2     F      LIGGET     3  214", "", ""],
+            ["E-314  ENG 11B   A      TURMAN     5  172", "", ""],
+            ["H-221  W.H. 11B  B      DWYMER     2  108", "", ""],
+            ["M-106  HOME EC   D      MARKS      4  205", "", ""],
+            ["PE-02  PHYS ED   C      COMSTOCK   1  GYM", "", ""],
+            ["M-122  CALC 1    B      LOGAN      6  240", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["TO SCAN FOR CARRIER TONES, PLEASE LIST DESIRED AREA CODES AND PREFIXES", "", ""],
+            ["", "", ""],
+            ["AREA              AREA", "", ""],
+            ["CODE PRFX NUMBER  CODE PRFX NUMBER", "", ""],
+            ["", "", ""],
+            ["(311) 399-0001    (311) 437", "", ""],
+            ["(311) 399-0002", "", ""],
+            ["(311) 399-0003", "", ""],
+            ["(311) 399-0004", "", ""],
+            ["(311) 399-0005", "", ""],
+            ["(311) 399-0006", "", ""],
+            ["(311) 399-0007", "", ""],
+            ["(311) 399-0008", "", ""],
+            ["(311) 399-0009", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["", "NUMBERS FOR WHICH CARRIER TONES WERE DETECTED:", ""],
+            ["", "", ""],
+            ["", "NO SYSTEMS FOUND", ""],
+            ["", "", ""],
+            ["", "NOTE: TYPE LOAD AND PRESS ENTER KEY TO RESTORE SCAN RESULTS", ""],
+            ["", "", ""],
+            ["", "PRESS ENTER KEY TO RETURN TO MENU", ""],
+            ["", "OR SELECT SYSTEM: load", ""],
+            ["", "", ""],
+            ["", "SYSTEM LIST LOADED", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["", "NUMBERS FOR WHICH CARRIER TONES WERE DETECTED:", ""],
+            ["", "", ""],
+            ["", "     (311) 399-2364    ", ""],
+            ["", "     (311) 399-3582    ", ""],
+            ["", "===> (311) 437-8739    ", ""],
+            ["", "     (311) 437-1083    ", ""],
+            ["", "     (311) 437-2977    ", ""],
+            ["", "     (311) 767-7305    ", ""],
+            ["", "     (311) 767-3395    ", ""],
+            ["", "     (311) 936-1493    ", ""],
+            ["", "     (311) 936-3923    ", ""],
+            ["", "", ""],
+            ["PRESS <RETURN> TO BEGIN DIALING THE SELECTED NUMBER", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["", "", ""],
+            ["LOGON: Joshua", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["FALKEN AI INDUSTRIES 1977", "", ""],
+            ["", "", ""],
+            ["1145-45-F6-3456", "NOPR STATUS: TRAK OFF", "PRON ACTIVE"],
+            ["#45:45:45", "", "WER:45/29/01 XCOMP:43239582 YCOMP:3492030D ZCOMP:343906834"],
+            ["", "", ""],
+            ["-              PRT. STAT.     CRT. DEF.", "", ""],
+            ["(311) 936-3582 =========================", "", ""],
+            ["               3453           3594", "", ""],
+            ["SYSPROC FUNCT READY", "", "ALT NET READY"],
+            ["CPU AUTH RV-345-AXO", "", "SYSCOMP STAT: ALL PORTS ACTIVE"],
+            ["", "", ""],
+            ["LOGON:", "", ""],
+            ["$/>", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["GREETINGS PROFESSOR FALKEN.", "", ""],
+            ["", "", ""],
+            ["Hello.", "", ""],
+            ["", "", ""],
+            ["HOW ARE YOU FEELING TODAY?", "", ""],
+            ["", "", ""],
+            ["I'm fine. How are you?", "", ""],
+            ["", "", ""],
+            ["EXCELLENT.  IT'S BEEN A LONG TIME.  CAN YOU EXPLAIN THE REMOVAL OF YOUR USER ACCOUNT NUMBER ON 6/23/73?", "", ""],
+            ["", "", ""],
+            ["People sometimes make mistakes.", "", ""],
+            ["", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["YES THEY DO.  SHALL WE PLAY A GAME?", "", ""],
+            ["", "", ""],
+            ["Love to.  How about Global Thermonuclear War?", "", ""],
+            ["", "", ""],
+            ["WOULDN'T YOU PREFER A GOOD GAME OF CHESS?", "", ""],
+            ["", "", ""],
+            ["Later. Lets play Global Thermonuclear War.", "", ""],
+            ["", "", ""],
+            ["FINE", "", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    },
+    {
+        "lines": [
+            ["", "                                                                                           #@@@@@@", ""],
+            ["", "                                                                    /@@@@@@@ @@* @", ""],
+            ["", "    & @# (                                                      @#@@@@@@@@@@@@@@@@@ @@@@@@ @", ""],
+            ["", "    @@@@@@@@@@@@@@@@@@@@*          .@@*             @@@  / @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@", ""],
+            ["", "   @@@@@@@@@@@@@@@@@@@@@@@ @@   ,@@@(               @@*@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ /@", ""],
+            ["", "   @@@@@@@@@@@@@@@@@@@@@@@.@@/@@@@@                 @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ @@@@", ""],
+            ["", "   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@                  @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@     @@", ""],
+            ["", "    .@@@@@@@@@@@@@@@@@@@@@@@@@@@@@.                  @@@@@@@@@     @@@@@@@@@@@@@  @@@@     @", ""],
+            ["", "       ,@@@@@@@@@@@@@@@@@@@@@@@@,                      @@@                          @@", ""],
+            ["", "              @@@@@@@@@@@@./,#@@                                   ", ""],
+            ["", "                 &@@            @/                       ", ""],
+            ["", "", ""],
+            ["", "               UNITED STATES                                          SOVIET UNION", ""],
+            ["", "", ""],
+            ["", "   WHICH SIDE DO YOU WANT?", ""],
+            ["", "1. UNITED STATES", ""],
+            ["", "2. SOVIET UNION", ""],
+            ["", "", ""],
+            ["", "PLEASE CHOOSE ONE: ", ""]
+        ],
+        "colour": [0, 255, 255],
+        "y": 10,
+        "delay": 4,
+        "centered": []
+    }
+]

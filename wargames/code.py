@@ -9,6 +9,8 @@ from adafruit_st7789 import ST7789
 import time
 import json
 
+from .utils import wrap_text
+
 # Constants for display configuration
 LEFT_MARGIN = 10
 RIGHT_MARGIN = 10
@@ -56,27 +58,6 @@ def load_screens(file_path):
     with open(file_path, 'r') as file:
         screens = json.load(file)
     return screens
-
-
-def wrap_text(text, max_chars):
-    """Wrap text to fit within max_chars per line"""
-    # If the text is already short enough, return it unmodified as a single line
-    if len(text) <= max_chars:
-        return [text]
-    # If the text is too long, wrap it to fit within the specified width, while
-    # stripping unnecessary whitespace
-    words = text.split(' ')
-    wrapped_lines = []
-    line = ''
-    for word in words:
-        if len(line) + len(word) + 1 <= max_chars:
-            line += (word + ' ')
-        else:
-            wrapped_lines.append(line.strip())
-            line = word + ' '
-    if line:
-        wrapped_lines.append(line.strip())
-    return wrapped_lines
 
 
 def display_line_with_typing(splash, text, x, y, scale, colour, upper_delay, lower_delay):

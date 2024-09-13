@@ -50,17 +50,34 @@ cp -r wargames/* /Volumes/CIRCUITPY/
 
 The auto-reload should kick in and the program should start running on the device.
 
+## Development Setup
 
-## Debugging via Serial Console
+### Local Tests
+
+Set up the virtual environment:
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+Run the tests:
+
+```bash
+pytest
+```
+
+### Debugging via Serial Console
 To debug the device via the serial console, follow the instructions below.
 
-### Mac or Linux
+#### Mac or Linux
 Follow the instructions [here](https://learn.adafruit.com/welcome-to-circuitpython/advanced-serial-console-on-mac-and-linux) to set up the serial console on Mac or Linux.
 
-### Windows
+#### Windows
 Follow the instructions [here](https://learn.adafruit.com/welcome-to-circuitpython/advanced-serial-console-on-windows) to set up the serial console on Windows.
 
-### VSCode/Mu/Arduino IDE
+#### VSCode/Mu/Arduino IDE
 
 If you use VSCode, you can install the CircuitPython extension and use its built-in serial console. After installing the extension, at the bottom of your VSCode window you will need to:
 - Choose Circuit Python Board (in my case, `Adafruit:QT Py ESP32S3 no psram`)
@@ -70,7 +87,7 @@ If you use the [Mu editor](https://codewith.mu/), you can [use the serial consol
 
 If you use the [Arduino IDE](https://www.arduino.cc/en/software), you can use the serial monitor built into the IDE. You will first need to install the appropriate CircuitPython board and libraries in the Arduino IDE. This _should_ happen automatically if your device is connected to the computer and the Arduino IDE is open.
 
-### REPL
+#### REPL
 
 Depending on how you've accessed the serial console, you might be able to access the REPL. Using the REPL you can run Python commands directly on the device for further debugging.
 
@@ -87,7 +104,7 @@ Adafruit CircuitPython 8.2.6 on 2023-09-12; Adafruit QT Py ESP32-S3 no psram wit
 >>>
 ```
 
-## Upgrading CircuitPython
+### Upgrading CircuitPython
 
 At the time of writing, the latest stable version of CircuitPython is 9.0.5. The version that was already installed on my device was 8.2.6.
 

@@ -50,6 +50,52 @@ cp -r wargames/* /Volumes/CIRCUITPY/
 
 The auto-reload should kick in and the program should start running on the device.
 
+#### Local Simulation
+
+You can simulate any TRS-80 Model III program on your local machine without physical hardware using the universal simulator:
+
+```bash
+# Run the default program (wargames)
+./run_simulator.py
+
+# Run a specific program
+./run_simulator.py trs80m3boot
+
+# Show available programs
+./run_simulator.py nonexistent
+```
+
+The simulator:
+- Creates a hardware abstraction layer that mimics the Adafruit QT Py ESP32-S3
+- Mocks the CircuitPython libraries (board, displayio, etc.)
+- Renders display output to your terminal with proper text positioning and screen clearing
+- Works with any program in the repository (wargames, trs80m3boot, or future programs)
+- Handles relative imports and resource paths automatically
+
+This approach allows you to rapidly develop and test your programs on your computer without constantly deploying to the physical device, making the development cycle much faster.
+
+#### Project Organization
+
+The project is structured as follows:
+
+- `/simulator/` - Contains the simulator implementation
+  - `circuitpython_mock.py` - Mocks for CircuitPython hardware modules
+  - `terminal_display.py` - Terminal-based display rendering
+  - `program_runner.py` - Loads and executes CircuitPython programs
+
+- `/wargames/` - WarGames movie screens simulation
+  - `code.py` - Main program implementing screens from the WarGames movie
+  - `utils.py` - Utility functions for text handling
+  - `screens.json` - Screen definitions for the simulation
+  - `test_wargames.py` - Tests for the wargames implementation
+
+- `/trs80m3boot/` - TRS-80 Model III boot sequence
+  - `code.py` - Boot sequence simulation
+
+The root directory contains the main scripts:
+- `run_simulator.py` - Tool for running programs in the simulator
+- `run_tests.py` - Tool for running tests with proper mocking
+
 ## Development Setup
 
 ### Local Tests
@@ -59,14 +105,22 @@ Set up the virtual environment:
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
 ```
 
 Run the tests:
 
 ```bash
-pytest
+# Use the provided script to run all tests
+./run_tests.py
+
+# Run a specific test file
+./run_tests.py wargames.test_wargames
+
+# Run a specific test case
+./run_tests.py wargames.test_wargames.TestTextWrapping.test_wrap_text_multiple_lines
 ```
+
+The `run_tests.py` script handles mocking of CircuitPython hardware dependencies, allowing you to run tests on your development machine without actual hardware. It uses the standard unittest framework for better compatibility.
 
 ### Debugging via Serial Console
 To debug the device via the serial console, follow the instructions below.

@@ -50,6 +50,34 @@ cp -r wargames/* /Volumes/CIRCUITPY/
 
 The auto-reload should kick in and the program should start running on the device.
 
+### conway
+
+This script implements Conway's Game of Life, a cellular automaton devised by mathematician John Conway in 1970. The simulation showcases multiple classic patterns including the Gosper Glider Gun, simple Gliders, Blinkers, Pulsars, and randomly generated configurations.
+
+The Game of Life runs on a grid where each cell is either alive or dead. Based on simple rules, cells can live, die, or be born:
+1. Any live cell with fewer than two live neighbors dies (underpopulation)
+2. Any live cell with two or three live neighbors survives
+3. Any live cell with more than three live neighbors dies (overpopulation)
+4. Any dead cell with exactly three live neighbors becomes alive (reproduction)
+
+The simulation automatically cycles through different patterns every 50 generations, displaying a counter at the bottom of the screen.
+
+#### Install
+
+To install the Conway's Game of Life script, copy the _content_ of the `conway` directory to the `CIRCUITPY` drive on your device:
+
+```bash
+cp -r conway/* /Volumes/CIRCUITPY/
+```
+
+You can also use the provided installation script:
+
+```bash
+./install_conway.sh
+```
+
+The auto-reload should kick in and the program should start running on the device.
+
 #### Local Simulation
 
 You can simulate any TRS-80 Model III program on your local machine without physical hardware using the universal simulator:
@@ -91,6 +119,10 @@ The project is structured as follows:
 
 - `/trs80m3boot/` - TRS-80 Model III boot sequence
   - `code.py` - Boot sequence simulation
+
+- `/conway/` - Conway's Game of Life
+  - `code.py` - Conway's Game of Life implementation with multiple patterns
+  - `__init__.py` - Package initialization file
 
 The root directory contains the main scripts:
 - `run_simulator.py` - Tool for running programs in the simulator

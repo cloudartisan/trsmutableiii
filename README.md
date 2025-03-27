@@ -70,10 +70,28 @@ To install the Conway's Game of Life script, copy the _content_ of the `conway` 
 cp -r conway/* /Volumes/CIRCUITPY/
 ```
 
-You can also use the provided installation script:
+The auto-reload should kick in and the program should start running on the device.
+
+### pong
+
+This script implements the classic arcade game Pong, one of the earliest video games released in 1972. The implementation features a fully functional game with paddles, ball physics, scoring, and AI opponents.
+
+Since the TRS-80 Model III replica lacks a physical keyboard, this version runs in auto-play mode where both the player and CPU paddles are controlled by AI. The player paddle uses a simpler AI while the CPU paddle has adjustable difficulty.
+
+Features:
+- Classic green-on-black aesthetic reminiscent of early computers
+- Text-based graphics using special characters
+- Ball physics with directional control based on where the ball hits the paddle
+- Score tracking with a winning condition (first to 5 points)
+- Automatic restart after a game completes
+- Variable ball speed and paddle AI difficulty
+
+#### Install
+
+To install the Pong game, copy the _content_ of the `pong` directory to the `CIRCUITPY` drive on your device:
 
 ```bash
-./install_conway.sh
+cp -r pong/* /Volumes/CIRCUITPY/
 ```
 
 The auto-reload should kick in and the program should start running on the device.
@@ -122,6 +140,10 @@ The project is structured as follows:
 
 - `/conway/` - Conway's Game of Life
   - `code.py` - Conway's Game of Life implementation with multiple patterns
+  - `__init__.py` - Package initialization file
+
+- `/pong/` - Classic Pong Game
+  - `code.py` - Pong game implementation with AI and auto-play
   - `__init__.py` - Package initialization file
 
 The root directory contains the main scripts:

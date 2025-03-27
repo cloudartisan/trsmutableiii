@@ -221,21 +221,55 @@ class PongGame:
             ]
         }
         
-        # Draw player score (left side)
-        player_digit = min(self.player_score, 9)  # Cap at 9 for simplicity
-        pattern = number_patterns[player_digit]
-        for row_idx, row in enumerate(pattern):
-            for col_idx, char in enumerate(row):
-                if char == '█':
-                    self.board[row_idx + 1][player_x + col_idx] = PADDLE_CHAR
+        # Draw player score (left side) - support up to 11 points (two digits)
+        player_score_str = str(self.player_score)
+        if len(player_score_str) == 1:  # Single digit
+            player_digit = int(player_score_str)
+            pattern = number_patterns[player_digit]
+            for row_idx, row in enumerate(pattern):
+                for col_idx, char in enumerate(row):
+                    if char == '█':
+                        self.board[row_idx + 1][player_x + col_idx] = PADDLE_CHAR
+        else:  # Two digits (score 10 or 11)
+            # Draw first digit (1)
+            pattern = number_patterns[1]
+            for row_idx, row in enumerate(pattern):
+                for col_idx, char in enumerate(row):
+                    if char == '█':
+                        self.board[row_idx + 1][player_x + col_idx] = PADDLE_CHAR
+            
+            # Draw second digit (0 or 1)
+            second_digit = int(player_score_str[1])
+            pattern = number_patterns[second_digit]
+            for row_idx, row in enumerate(pattern):
+                for col_idx, char in enumerate(row):
+                    if char == '█':
+                        self.board[row_idx + 1][player_x + col_idx + 4] = PADDLE_CHAR  # Offset by 4
         
-        # Draw CPU score (right side)
-        cpu_digit = min(self.cpu_score, 9)  # Cap at 9 for simplicity
-        pattern = number_patterns[cpu_digit]
-        for row_idx, row in enumerate(pattern):
-            for col_idx, char in enumerate(row):
-                if char == '█':
-                    self.board[row_idx + 1][cpu_x - len(row) + col_idx] = PADDLE_CHAR
+        # Draw CPU score (right side) - support up to 11 points (two digits)
+        cpu_score_str = str(self.cpu_score)
+        if len(cpu_score_str) == 1:  # Single digit
+            cpu_digit = int(cpu_score_str)
+            pattern = number_patterns[cpu_digit]
+            for row_idx, row in enumerate(pattern):
+                for col_idx, char in enumerate(row):
+                    if char == '█':
+                        self.board[row_idx + 1][cpu_x - len(row) + col_idx] = PADDLE_CHAR
+        else:  # Two digits (score 10 or 11)
+            # Draw first digit (1)
+            pattern = number_patterns[1]
+            for row_idx, row in enumerate(pattern):
+                for col_idx, char in enumerate(row):
+                    if char == '█':
+                        self.board[row_idx + 1][cpu_x - 7 + col_idx] = PADDLE_CHAR  # Offset back for two digits
+            
+            # Draw second digit (0 or 1)
+            second_digit = int(cpu_score_str[1])
+            pattern = number_patterns[second_digit]
+            for row_idx, row in enumerate(pattern):
+                for col_idx, char in enumerate(row):
+                    if char == '█':
+                        self.board[row_idx + 1][cpu_x - 3 + col_idx] = PADDLE_CHAR  # Offset for 2nd digit
         
         # Add paddles - make them shorter but wider (two columns)
         for i in range(PADDLE_SIZE):
@@ -453,27 +487,6 @@ class PongGame:
                 color=0x00FF00  # Green color
             )
             splash.append(row_area)
-        
-        # Display game over message if needed
-        if self.game_over:
-            message = f"{self.winner} WINS!"
-            message_area = label.Label(
-                terminalio.FONT,
-                text=message,
-                x=(DISPLAY_WIDTH - len(message) * CHAR_WIDTH) // 2,
-                y=TOP_MARGIN + (BOARD_HEIGHT + 2) * LINE_HEIGHT,
-                color=0xFFFF00  # Yellow color
-            )
-            splash.append(message_area)
-            restart_text = "RESTARTING..."
-            restart_area = label.Label(
-                terminalio.FONT,
-                text=restart_text,
-                x=(DISPLAY_WIDTH - len(restart_text) * CHAR_WIDTH) // 2,
-                y=TOP_MARGIN + (BOARD_HEIGHT + 4) * LINE_HEIGHT,
-                color=0xFFFF00  # Yellow color
-            )
-            splash.append(restart_area)
     
     def update(self):
         """Update the game state"""
@@ -494,7 +507,12 @@ class PongGame:
         self.display_game()
     
     def restart_game(self):
-        """Restart the game"""
+        """Restart the game with a clean slate"""
+        # Clear the display completely
+        splash = displayio.Group()
+        self.display.show(splash)
+        
+        # Reset all game state
         self.player_score = 0
         self.cpu_score = 0
         self.game_over = False
@@ -503,6 +521,9 @@ class PongGame:
         self.cpu_y = (BOARD_HEIGHT - PADDLE_SIZE) // 2
         self.reset_ball()
         self.update_board()
+        
+        # Brief pause before starting new game
+        time.sleep(1)
 
 
 def main():
@@ -510,48 +531,7 @@ def main():
     display = initialise_display()
     game = PongGame(display)
     
-    # Display title screen
-    splash = displayio.Group()
-    display.show(splash)
-    
-    title = label.Label(
-        terminalio.FONT,
-        text="PONG",
-        scale=3,
-        x=DISPLAY_WIDTH // 2 - 30,
-        y=DISPLAY_HEIGHT // 3,
-        color=0xFFFFFF  # White color
-    )
-    splash.append(title)
-    
-    subtitle = label.Label(
-        terminalio.FONT,
-        text="TRS-80 MODEL III EDITION",
-        x=DISPLAY_WIDTH // 2 - 100,
-        y=DISPLAY_HEIGHT // 2,
-        color=0x00FF00  # Green color
-    )
-    splash.append(subtitle)
-    
-    instructions = label.Label(
-        terminalio.FONT,
-        text="AUTO-PLAY MODE",
-        x=DISPLAY_WIDTH // 2 - 60,
-        y=DISPLAY_HEIGHT // 2 + 40,
-        color=0xFFFF00  # Yellow color
-    )
-    splash.append(instructions)
-    
-    start_text = label.Label(
-        terminalio.FONT,
-        text="STARTING IN 3 SECONDS...",
-        x=DISPLAY_WIDTH // 2 - 90,
-        y=DISPLAY_HEIGHT // 2 + 70,
-        color=0xFFFF00  # Yellow color
-    )
-    splash.append(start_text)
-    
-    time.sleep(3)
+    # No splash screen - start game immediately just like the original
     
     # Main game loop
     try:

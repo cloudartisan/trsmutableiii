@@ -12,6 +12,14 @@ from adafruit_st7789 import ST7789
 # Force garbage collection at the very start
 gc.collect()
 
+# Check if we're running on CircuitPython (has mem_free) or standard Python
+try:
+    print(f"Initial free memory: {gc.mem_free()} bytes")
+    has_mem_free = True
+except AttributeError:
+    print("Running in simulator mode - memory stats not available")
+    has_mem_free = False
+
 # Immediately free any unnecessary memory
 displayio.release_displays()
 gc.collect()
@@ -27,9 +35,9 @@ TFT_CS = board.D5  # Chip select pin
 TFT_DC = board.D16  # Data/command pin
 TFT_RESET = board.D9  # Reset pin
 
-# Minimal game settings - drastic reduction to avoid any 256-byte allocations
-GRID_WIDTH = 16    # Drastically reduced width to avoid memory errors
-GRID_HEIGHT = 8    # Drastically reduced height to avoid memory errors
+# Game board dimensions - optimized for memory constraints while maintaining playability
+GRID_WIDTH = 10    # Slightly increased from absolute minimum
+GRID_HEIGHT = 8    # Slightly increased from absolute minimum
 GAME_SPEED = 0.15  # Delay between frames
 
 # Directions (dx, dy)
@@ -41,24 +49,30 @@ RIGHT = (1, 0)
 # Additional settings that will be defined later
 HORIZONTAL_DOUBLE_WIDTH = True  # Flag for double-width rendering
 
-def debug_print(*lines, delay=0.5):
-    """Simplified debug print that uses minimal memory"""
+def debug_print(*lines, delay=0.2):
+    """Memory-efficient debug print function"""
+    gc.collect()  # Collect before printing
     for line in lines:
         try:
             print(line)
-            time.sleep(delay)
-        except Exception:
-            pass
+            # Only sleep if delay is significant
+            if delay > 0.05:
+                time.sleep(delay)
+        except Exception as e:
+            print(f"Print error: {e}")
+    
     # Force garbage collection after printing
     gc.collect()
 
 def initialise_display():
-    """Minimal display initialization to reduce memory usage"""
+    """Memory-optimized display initialization"""
     # Force garbage collection before display initialization
     gc.collect()
+    if has_mem_free:
+        print(f"Before display init: {gc.mem_free()} bytes")
     
     try:
-        # Create display bus with minimal operations
+        # Create display bus
         display_bus = displayio.FourWire(
             SPI, 
             command=TFT_DC,
@@ -68,8 +82,10 @@ def initialise_display():
         
         # Free memory before creating display
         gc.collect()
+        if has_mem_free:
+            print(f"After bus creation: {gc.mem_free()} bytes")
         
-        # Create ST7789 display with minimal parameters
+        # Create ST7789 display
         display = ST7789(
             display_bus,
             width=DISPLAY_WIDTH,
@@ -78,27 +94,34 @@ def initialise_display():
             rotation=270
         )
         
-        # Print simple success message
-        print("Display initialized")
-        
         # Force garbage collection after display creation
         gc.collect()
+        if has_mem_free:
+            print(f"After display init: {gc.mem_free()} bytes")
         
         return display
         
     except Exception as e:
         print(f"Display error: {e}")
-        time.sleep(1)
-        # Try one more time with forced GC
         gc.collect()
         
-        # Create minimal display objects
+        # If we got an error, try to clean up any partial objects
+        try:
+            del display_bus
+        except:
+            pass
+            
+        gc.collect()
+        print("Retrying display init after error...")
+        
+        # Try one more time with more careful approach
         display_bus = displayio.FourWire(
             SPI, 
             command=TFT_DC,
             chip_select=TFT_CS,
             reset=TFT_RESET
         )
+        gc.collect()  # Collect after bus creation
         
         display = ST7789(
             display_bus,
@@ -107,8 +130,8 @@ def initialise_display():
             rowstart=20,
             rotation=270
         )
+        gc.collect()  # Collect after display creation
         
-        gc.collect()
         return display
 
 # Define game constants only after display initialization succeeds
@@ -118,12 +141,19 @@ def define_game_constants():
     global LOGICAL_GRID_WIDTH, SNAKE_SPEEDUP_FACTOR, MIN_GAME_SPEED
     global COLOR_SNAKE, COLOR_FOOD, COLOR_BORDER
     global SNAKE_HEAD_CHAR, SNAKE_BODY_CHAR, FOOD_CHAR, EMPTY_CHAR, BORDER_CHAR
+    global LINE_HEIGHT, CHAR_WIDTH
     
-    # Display margins
+    # If memory tracking is available, report memory before defining constants
+    if has_mem_free:
+        print(f"Before defining constants: {gc.mem_free()} bytes")
+        
+    # Display margins and layout
     LEFT_MARGIN = 10
     RIGHT_MARGIN = 10
     TOP_MARGIN = 20
     BOTTOM_MARGIN = 10
+    LINE_HEIGHT = 14  # Vertical spacing for text rows
+    CHAR_WIDTH = 6    # Horizontal spacing for characters
     
     # Game settings
     LOGICAL_GRID_WIDTH = GRID_WIDTH // 2 if HORIZONTAL_DOUBLE_WIDTH else GRID_WIDTH
@@ -144,17 +174,28 @@ def define_game_constants():
     
     # Force garbage collection after defining constants
     gc.collect()
+    
+    # Report memory after defining constants
+    if has_mem_free:
+        print(f"After defining constants: {gc.mem_free()} bytes")
 
 
 class SnakeGame:
-    """Snake game implementation - memory-optimized version"""
+    """Snake game implementation with memory-efficient techniques"""
     
     def __init__(self, display):
-        # Force garbage collection before initialization
+        # Force memory cleanup and monitor usage
         gc.collect()
         
-        # Store display reference
+        # Track memory if available
+        if has_mem_free:
+            initial_mem = gc.mem_free()
+            print(f"Starting game init, memory: {initial_mem} bytes")
+        
+        # Store display reference and create splash group once 
+        # (per CircuitPython memory saving tips)
         self.display = display
+        self.splash = displayio.Group()
         
         # Initialize minimal game state
         self.game_over = False
@@ -163,26 +204,26 @@ class SnakeGame:
         self.speed = GAME_SPEED
         self.frames = 0
         
-        # Create grid with ultra-minimal memory allocations - cell by cell
-        self.grid = []
-        for _ in range(GRID_HEIGHT):
-            # Create an empty row first
-            row = []
-            # Add individual cells to avoid any large allocations
-            for _ in range(GRID_WIDTH):
-                row.append(' ')  # Use a literal space to avoid even variable reference
-                # Force periodic collection during cell creation
-                if random.random() < 0.1:  # 10% chance per cell
-                    gc.collect()
-            # Append the row
-            self.grid.append(row)
-            # Force collection after each row
-            gc.collect()
+        # Create the grid all at once - surprisingly, this is more memory efficient
+        # in CircuitPython than creating it row by row or cell by cell
+        gc.collect()
+        if has_mem_free:
+            before_grid = gc.mem_free()
+            print(f"Before grid creation: {before_grid} bytes")
+        
+        # Pre-allocate the full board at once
+        self.grid = [[EMPTY_CHAR for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+        
+        gc.collect()
+        if has_mem_free:
+            after_grid = gc.mem_free()
+            print(f"After grid creation: {after_grid} bytes (used {before_grid - after_grid} bytes)")
         
         # Initialize minimal snake in the middle
         self.snake = [(LOGICAL_GRID_WIDTH // 2, GRID_HEIGHT // 2)]
         
         # Simplified direction choice to reduce memory usage
+        # Using time instead of random to reduce memory pressure during initialization
         dice = int(time.time() * 10) % 4
         self.direction = [UP, RIGHT, DOWN, LEFT][dice]
         
@@ -196,8 +237,11 @@ class SnakeGame:
         self.create_food()
         self.draw_border()
         
-        # Final garbage collection after initialization
+        # Final garbage collection and memory usage report
         gc.collect()
+        if has_mem_free:
+            final_mem = gc.mem_free()
+            print(f"Game ready, memory: {final_mem} bytes (used {initial_mem - final_mem} bytes)")
         
     def draw_border(self):
         """Draw the game border"""
@@ -212,16 +256,79 @@ class SnakeGame:
             self.grid[y][GRID_WIDTH-1] = BORDER_CHAR
     
     def create_food(self):
-        """Create food at a random empty location"""
-        empty_cells = []
-        for y in range(1, GRID_HEIGHT-1):
-            for x in range(1, LOGICAL_GRID_WIDTH-1):  # Use logical grid width
-                # Check if cell is empty and not occupied by the snake
-                if (x, y) not in self.snake:
-                    empty_cells.append((x, y))
+        """Create food at a random empty location - memory-optimized version"""
+        # Force collection before starting
+        gc.collect()
+        if has_mem_free:
+            initial_mem = gc.mem_free()
+            print(f"Creating food, memory: {initial_mem} bytes")
         
+        # Use a more memory-efficient algorithm for food placement
+        # Instead of checking if (x,y) not in snake (which creates temporary tuples),
+        # we'll do direct coordinate comparison
+        
+        # First approach: Try a simple random position a few times
+        # This avoids the need for double scanning the grid
+        max_attempts = 10
+        for _ in range(max_attempts):
+            # Generate random position (avoid borders)
+            x = random.randint(1, LOGICAL_GRID_WIDTH-2)
+            y = random.randint(1, GRID_HEIGHT-2)
+            
+            # Check if position is not occupied by snake
+            position_is_free = True
+            for snake_x, snake_y in self.snake:
+                if x == snake_x and y == snake_y:
+                    position_is_free = False
+                    break
+            
+            # If we found a free position, use it
+            if position_is_free:
+                self.food_pos = (x, y)
+                gc.collect()
+                if has_mem_free:
+                    final_mem = gc.mem_free()
+                    print(f"Food created at ({x},{y}), memory: {final_mem} bytes")
+                return
+                
+        # If we couldn't find a position with the fast approach, use a more thorough method
+        # Collect empty cells' coordinates in small batches to avoid large allocations
+        gc.collect()
+        empty_cells = []  # Will hold up to 4 empty cells at a time
+        
+        # Scan grid by small ranges to find empty cells
+        for y in range(1, GRID_HEIGHT-1):
+            for x in range(1, LOGICAL_GRID_WIDTH-1):
+                # Check if position is free
+                position_is_free = True
+                for snake_x, snake_y in self.snake:
+                    if x == snake_x and y == snake_y:
+                        position_is_free = False
+                        break
+                
+                # If position is free, add it to our small collection
+                if position_is_free:
+                    empty_cells.append((x, y))
+                    # If we have 4 cells, that's enough to choose from
+                    if len(empty_cells) >= 4:
+                        break
+            
+            # If we have enough empty cells, no need to continue scanning
+            if len(empty_cells) >= 4:
+                break
+        
+        # If we found any empty cells, choose one randomly
         if empty_cells:
             self.food_pos = random.choice(empty_cells)
+        else:
+            # Last resort fallback to fixed position
+            self.food_pos = (1, 1)
+        
+        # Final garbage collection
+        gc.collect()
+        if has_mem_free:
+            final_mem = gc.mem_free()
+            print(f"Food created (thorough method), memory: {final_mem} bytes")
     
     def update_grid(self):
         """Ultra-minimal grid update with micro-allocations to avoid 256-byte blocks"""
@@ -551,135 +658,158 @@ class SnakeGame:
         self.create_food()
     
     def display_game(self):
-        """Ultra-minimal display with micro-chunking to avoid 256-byte allocations"""
-        # Force garbage collection before display
+        """Display the game using techniques that work with both real hardware and simulator"""
+        # Monitor memory usage
         gc.collect()
+        if has_mem_free:
+            initial_mem = gc.mem_free()
+            print(f"Display start, memory: {initial_mem} bytes")
         
         try:
-            # Create a minimal display group
-            splash = displayio.Group()
-            self.display.show(splash)
+            # Clear the existing display group (don't recreate it)
+            while len(self.splash) > 0:
+                self.splash.pop()
             
-            # Display grid one micro-chunk at a time
-            for y in range(GRID_HEIGHT):
-                # Force collection before each row
-                gc.collect()
+            # Show our reused splash group
+            self.display.show(self.splash)
+            
+            # Create individual row labels - works better with simulator and real hardware
+            for y, row in enumerate(self.grid):
+                # Join this row into a string
+                row_text = "".join(row)
                 
-                # Process the row in 4-character chunks
-                for chunk_start in range(0, GRID_WIDTH, 4):
-                    # Force collection before each chunk
+                # Create a label for this row
+                row_label = label.Label(
+                    terminalio.FONT,
+                    text=row_text,
+                    x=LEFT_MARGIN,
+                    y=TOP_MARGIN + (y * LINE_HEIGHT),
+                    color=COLOR_SNAKE
+                )
+                
+                # Add the row label to our display group
+                self.splash.append(row_label)
+                
+                # Collect garbage periodically during display updates on real hardware
+                if has_mem_free and y % 2 == 0:
                     gc.collect()
-                    
-                    # Calculate the end of this chunk
-                    chunk_end = min(chunk_start + 4, GRID_WIDTH)
-                    
-                    # Create a minimal text string for just this chunk
-                    chunk_text = ""
-                    for x in range(chunk_start, chunk_end):
-                        chunk_text += self.grid[y][x]
-                    
-                    # Calculate position for this chunk
-                    chunk_x = LEFT_MARGIN + (chunk_start * 6)  # 6 pixels per character
-                    
-                    try:
-                        # Create a minimal label for just this small chunk
-                        chunk_label = label.Label(
-                            terminalio.FONT,
-                            text=chunk_text,
-                            x=chunk_x,
-                            y=TOP_MARGIN + y * 14,
-                            color=0x00FF00  # Green
-                        )
-                        splash.append(chunk_label)
-                        
-                        # Force collection after creating each label
-                        gc.collect()
-                    except MemoryError:
-                        # If memory error, skip this chunk and continue
-                        pass
             
-            # Display minimal score instead of formatted text
+            # Display minimal score with more consistent positioning
             try:
-                # Just show simple score without formatting to minimize memory use
-                simple_score = f"S:{self.score}"
+                # Show score with minimal formatting
+                score_text = f"Score: {self.score}  High: {self.high_score}"
                 
                 score_label = label.Label(
                     terminalio.FONT,
-                    text=simple_score,
+                    text=score_text,
                     x=LEFT_MARGIN,
-                    y=TOP_MARGIN + GRID_HEIGHT * 14 + 10,
-                    color=0xFFFFFF  # White
+                    y=TOP_MARGIN + (GRID_HEIGHT * LINE_HEIGHT) + 10,
+                    color=COLOR_BORDER
                 )
-                splash.append(score_label)
+                self.splash.append(score_label)
             except MemoryError:
-                # If we can't show score, just continue
-                pass
-                
-        except Exception as e:
-            # Handle any errors silently to keep game running
-            print(f"Display error: {e}")
+                # Fall back to ultra minimal score display if needed
+                try:
+                    minimal_score = f"S:{self.score}"
+                    score_label = label.Label(
+                        terminalio.FONT,
+                        text=minimal_score,
+                        x=LEFT_MARGIN,
+                        y=TOP_MARGIN + (GRID_HEIGHT * LINE_HEIGHT) + 10,
+                        color=COLOR_BORDER
+                    )
+                    self.splash.append(score_label)
+                except:
+                    pass  # If all else fails, continue without score display
             
-        # Final garbage collection
+            # Monitor memory after rendering if available
+            gc.collect()
+            if has_mem_free:
+                after_render = gc.mem_free()
+                if initial_mem - after_render > 500:  # Only log if significant change
+                    print(f"Display used {initial_mem - after_render} bytes")
+                    
+        except Exception as e:
+            # Log display errors
+            print(f"Display error: {e}")
+            gc.collect()
+        
+        # Force garbage collection after display update
         gc.collect()
     
     def update(self):
-        """Update the game state"""
-        # AI decides direction
-        self.ai_decide_direction()
+        """Update game state with memory-efficient techniques"""
+        # Monitor memory usage for diagnostics
+        gc.collect()
+        if has_mem_free:
+            initial_mem = gc.mem_free()
+            print(f"Update start, memory: {initial_mem} bytes")
         
-        # Move the snake
-        self.move_snake()
+        try:
+            if not self.game_over:
+                # 1. AI decides direction
+                self.ai_decide_direction()
+                
+                # 2. Move the snake
+                self.move_snake()
+                
+                # 3. Update grid with current game state
+                self.update_grid()
+            
+            # 4. Display the updated game
+            self.display_game()
+            
+            # Monitor memory usage if available
+            gc.collect()
+            if has_mem_free:
+                after_update = gc.mem_free()
+                if initial_mem - after_update > 500:  # Only log if significant change
+                    print(f"Update used {initial_mem - after_update} bytes")
         
-        # Update grid with current game state
-        self.update_grid()
-        
-        # Display the updated game
-        self.display_game()
+        except MemoryError as e:
+            # Handle memory errors
+            print(f"Memory error in update: {e}")
+            if has_mem_free:
+                print(f"Free memory: {gc.mem_free()} bytes")
+            gc.collect()
+            if has_mem_free:
+                print(f"After collection: {gc.mem_free()} bytes")
+            
+        except Exception as e:
+            # General error handling
+            print(f"Update error: {e}")
+            gc.collect()
 
 def main():
-    """Ultra minimal main function to avoid all 256 byte allocations"""
-    # Repeatedly force garbage collection at startup
-    for _ in range(5):
-        gc.collect()
-        time.sleep(0.1)
-        
+    """Main function with memory-efficient techniques for both CircuitPython and standard Python"""
+    # Initial memory diagnostics
+    gc.collect()
+    if has_mem_free:
+        print(f"Starting Snake, available memory: {gc.mem_free()} bytes")
+    else:
+        print("Starting Snake (memory stats not available)")
+    
     try:
-        print("Starting with extreme memory conservation...")
-        
-        # Step 1: Initialize display with absolute minimal overhead
-        print("Display init...")
-        display = None
+        # Release any existing displays to free memory
+        displayio.release_displays()
         gc.collect()
+        
+        # Step 1: Initialize display
+        print("Initializing display...")
         display = initialise_display()
         
-        # Force aggressive collection after display init
-        for _ in range(3):
-            gc.collect()
-            time.sleep(0.1)
-        
-        # Step 2: Define constants only after sufficient collection
-        print("Constants...")
+        # Step 2: Define game constants
+        print("Defining game constants...")
+        gc.collect()
         define_game_constants()
         
-        # More aggressive collection
-        for _ in range(3):
-            gc.collect()
-            time.sleep(0.1)
-        
-        # Step 3: Create game with minimum memory footprint
+        # Step 3: Create game instance with optimized memory usage
         print("Creating game...")
-        game = None  # Ensure no reference exists
         gc.collect()
         game = SnakeGame(display)
         
-        # Final pre-game collection
-        for _ in range(3):
-            gc.collect()
-            time.sleep(0.1)
-        
-        print("Game ready!")
-        
-        # Step 4: Super conservative game loop with extreme error handling
+        # Step 4: Main game loop with progressive startup to minimize memory pressure
+        print("Starting game loop")
         update_count = 0
         
         while True:
@@ -687,42 +817,53 @@ def main():
                 # Update count for gradual startup
                 update_count += 1
                 
-                # Force collection every frame
+                # Force collection before update
                 gc.collect()
                 
-                # Initially only update every other frame to reduce memory pressure
+                # For the first few frames, update every other frame to reduce memory pressure
                 if update_count < 20 and update_count % 2 == 0:
                     time.sleep(game.speed)
                     continue
                 
-                # Update game with minimal memory usage
+                # Update the game state
                 game.update()
                 
-                # Brief delay based on game speed
+                # Brief delay to control game speed
                 time.sleep(game.speed)
                 
-            except MemoryError as e:
-                # Detailed error reporting and very aggressive collection
-                print(f"Memory error: {e}")
-                for _ in range(5):
-                    gc.collect()
-                    time.sleep(0.2)
+                # Handle game over state - no need for separate call as it's handled in the update method
                 
-            except Exception as e:
-                # Other error handling
-                print(f"Error: {e}")
+            except MemoryError as e:
+                # Memory error diagnostics and recovery
+                print(f"Memory error: {e}")
+                if has_mem_free:
+                    print(f"Free memory: {gc.mem_free()} bytes")
                 gc.collect()
+                if has_mem_free:
+                    print(f"After collection: {gc.mem_free()} bytes")
                 time.sleep(0.5)
                 
+            except KeyboardInterrupt:
+                print("Game terminated by user")
+                raise
+                
+    except KeyboardInterrupt:
+        print("Game terminated by user")
+        
     except Exception as e:
-        # Fatal error handling with detailed reporting
+        # General error handling
         print(f"Fatal error: {e}")
-        for _ in range(5):
-            gc.collect()
-            time.sleep(0.5)
+        gc.collect()
 
 
 if __name__ == "__main__":
-    # Extremely minimal startup with forced memory cleanup
+    # Initial garbage collection
     gc.collect()
-    main()
+    
+    try:
+        # Start the game
+        main()
+    except Exception as e:
+        # Last resort error handling that works in both environments
+        print(f"Critical error: {e}")
+        gc.collect()

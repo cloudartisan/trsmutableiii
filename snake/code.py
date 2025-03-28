@@ -5,38 +5,21 @@ import displayio
 import terminalio
 import time
 import random
+import gc  # Import garbage collector
 from adafruit_display_text import label
 from adafruit_st7789 import ST7789
 
-# Constants for display configuration
+# Force garbage collection at the very start
+gc.collect()
+
+# Immediately free any unnecessary memory
+displayio.release_displays()
+gc.collect()
+
+# Minimal constants for initial setup - more defined later when needed
+# Display configuration
 DISPLAY_WIDTH = 280
 DISPLAY_HEIGHT = 240
-LEFT_MARGIN = 10
-RIGHT_MARGIN = 10
-TOP_MARGIN = 20
-BOTTOM_MARGIN = 10
-
-# Special flag to handle double-width horizontal rendering
-HORIZONTAL_DOUBLE_WIDTH = True  # When true, horizontal snake segments use two characters
-
-# Game constants
-GRID_WIDTH = 32  # Width of play area in characters
-GRID_HEIGHT = 16  # Height of play area in characters
-LOGICAL_GRID_WIDTH = GRID_WIDTH // 2 if HORIZONTAL_DOUBLE_WIDTH else GRID_WIDTH  # Logical width for game logic
-GAME_SPEED = 0.15  # Delay between frames (lower is faster)
-SNAKE_SPEEDUP_FACTOR = 0.98  # Speed increases by this factor when snake eats (less drastic)
-MIN_GAME_SPEED = 0.05  # Don't allow the game to get faster than this
-COLOR_SNAKE = 0x00FF00  # Green
-COLOR_FOOD = 0xFF0000  # Red
-COLOR_BORDER = 0xFFFFFF  # White
-
-# Game characters
-SNAKE_HEAD_CHAR = '█'  # Snake head character (full block)
-SNAKE_BODY_CHAR = '█'  # Snake body character (full block)
-FOOD_CHAR = '●'        # Food character
-EMPTY_CHAR = ' '       # Empty space character
-BORDER_CHAR = '░'      # Border character (lighter pattern)
-
 
 # Physical display configuration
 SPI = board.SPI()
@@ -44,28 +27,49 @@ TFT_CS = board.D5  # Chip select pin
 TFT_DC = board.D16  # Data/command pin
 TFT_RESET = board.D9  # Reset pin
 
+# Minimal game settings
+GRID_WIDTH = 24    # Reduced width for lower memory usage
+GRID_HEIGHT = 12   # Reduced height for lower memory usage
+GAME_SPEED = 0.15  # Delay between frames
+
 # Directions (dx, dy)
 UP = (0, -1)
 DOWN = (0, 1)
 LEFT = (-1, 0)
 RIGHT = (1, 0)
 
-def debug_print(*lines, delay=1):
-    """Print debug messages with an optional delay"""
+# Additional settings that will be defined later
+HORIZONTAL_DOUBLE_WIDTH = True  # Flag for double-width rendering
+
+def debug_print(*lines, delay=0.5):
+    """Simplified debug print that uses minimal memory"""
     for line in lines:
-        print(line)
-        time.sleep(delay)
+        try:
+            print(line)
+            time.sleep(delay)
+        except Exception:
+            pass
+    # Force garbage collection after printing
+    gc.collect()
 
 def initialise_display():
-    """Initialize the display"""
+    """Minimal display initialization to reduce memory usage"""
+    # Force garbage collection before display initialization
+    gc.collect()
+    
     try:
-        displayio.release_displays()
+        # Create display bus with minimal operations
         display_bus = displayio.FourWire(
-            SPI,
+            SPI, 
             command=TFT_DC,
             chip_select=TFT_CS,
             reset=TFT_RESET
         )
+        
+        # Free memory before creating display
+        gc.collect()
+        
+        # Create ST7789 display with minimal parameters
         display = ST7789(
             display_bus,
             width=DISPLAY_WIDTH,
@@ -73,38 +77,118 @@ def initialise_display():
             rowstart=20,
             rotation=270
         )
-        debug_print("Display initialized successfully")
+        
+        # Print simple success message
+        print("Display initialized")
+        
+        # Force garbage collection after display creation
+        gc.collect()
+        
+        return display
+        
     except Exception as e:
-        debug_print(f"Error initializing display: {e}", delay=5)
-        raise e
+        print(f"Display error: {e}")
+        time.sleep(1)
+        # Try one more time with forced GC
+        gc.collect()
+        
+        # Create minimal display objects
+        display_bus = displayio.FourWire(
+            SPI, 
+            command=TFT_DC,
+            chip_select=TFT_CS,
+            reset=TFT_RESET
+        )
+        
+        display = ST7789(
+            display_bus,
+            width=DISPLAY_WIDTH,
+            height=DISPLAY_HEIGHT,
+            rowstart=20,
+            rotation=270
+        )
+        
+        gc.collect()
+        return display
 
-    return display
+# Define game constants only after display initialization succeeds
+def define_game_constants():
+    """Define game constants only when needed to reduce startup memory usage"""
+    global LEFT_MARGIN, RIGHT_MARGIN, TOP_MARGIN, BOTTOM_MARGIN
+    global LOGICAL_GRID_WIDTH, SNAKE_SPEEDUP_FACTOR, MIN_GAME_SPEED
+    global COLOR_SNAKE, COLOR_FOOD, COLOR_BORDER
+    global SNAKE_HEAD_CHAR, SNAKE_BODY_CHAR, FOOD_CHAR, EMPTY_CHAR, BORDER_CHAR
+    
+    # Display margins
+    LEFT_MARGIN = 10
+    RIGHT_MARGIN = 10
+    TOP_MARGIN = 20
+    BOTTOM_MARGIN = 10
+    
+    # Game settings
+    LOGICAL_GRID_WIDTH = GRID_WIDTH // 2 if HORIZONTAL_DOUBLE_WIDTH else GRID_WIDTH
+    SNAKE_SPEEDUP_FACTOR = 0.98
+    MIN_GAME_SPEED = 0.05
+    
+    # Colors
+    COLOR_SNAKE = 0x00FF00  # Green
+    COLOR_FOOD = 0xFF0000   # Red
+    COLOR_BORDER = 0xFFFFFF # White
+    
+    # Game characters - using simpler characters to reduce memory usage
+    SNAKE_HEAD_CHAR = 'O'   # Simplified head character
+    SNAKE_BODY_CHAR = '#'   # Simplified body character
+    FOOD_CHAR = '*'         # Simplified food character
+    EMPTY_CHAR = ' '        # Empty space character
+    BORDER_CHAR = '='       # Simplified border character
+    
+    # Force garbage collection after defining constants
+    gc.collect()
+
 
 class SnakeGame:
-    """Snake game implementation"""
+    """Snake game implementation - memory-optimized version"""
     
     def __init__(self, display):
+        # Force garbage collection before initialization
+        gc.collect()
+        
+        # Store display reference
         self.display = display
+        
+        # Initialize minimal game state
         self.game_over = False
         self.score = 0
         self.high_score = 0
         self.speed = GAME_SPEED
-        self.grid = [[EMPTY_CHAR for _ in range(GRID_WIDTH)] for _ in range(GRID_HEIGHT)]
+        self.frames = 0
         
-        # Initialize snake in the middle of the screen
-        # Use logical grid width for snake positions
+        # Create grid one row at a time to reduce memory pressure
+        self.grid = []
+        for _ in range(GRID_HEIGHT):
+            self.grid.append([EMPTY_CHAR] * GRID_WIDTH)
+            # Force collection after each row
+            gc.collect()
+        
+        # Initialize minimal snake in the middle
         self.snake = [(LOGICAL_GRID_WIDTH // 2, GRID_HEIGHT // 2)]
-        self.direction = random.choice([UP, DOWN, LEFT, RIGHT])
         
-        # Create initial food
+        # Simplified direction choice to reduce memory usage
+        dice = int(time.time() * 10) % 4
+        self.direction = [UP, RIGHT, DOWN, LEFT][dice]
+        
+        # Food position
         self.food_pos = None
-        self.create_food()
         
-        # Draw initial border
+        # Force garbage collection before calling other methods
+        gc.collect()
+        
+        # Initialize game elements
+        self.create_food()
         self.draw_border()
         
-        # Counter for frames since game started (for mistake probability calculation)
-        self.frames = 0
+        # Final garbage collection after initialization
+        gc.collect()
         
     def draw_border(self):
         """Draw the game border"""
@@ -455,17 +539,47 @@ class SnakeGame:
         self.display_game()
 
 def main():
-    """Main function to run the Snake game"""
-    display = initialise_display()
-    game = SnakeGame(display)
+    """Minimal main function with deferred initialization to reduce memory usage"""
+    # Initial garbage collection
+    gc.collect()
     
-    # Main game loop
     try:
+        # Step 1: Initialize display with minimal memory usage
+        print("Initializing display...")
+        display = initialise_display()
+        
+        # Step 2: Define constants only after display init succeeds
+        print("Defining game constants...")
+        define_game_constants()
+        gc.collect()
+        
+        # Step 3: Create game only after constants are defined
+        print("Starting game...")
+        gc.collect()  # Force collection before game creation
+        game = SnakeGame(display)
+        
+        # Step 4: Simple game loop with basic error handling
         while True:
-            game.update()
-            time.sleep(game.speed)  # Use current game speed
-    except KeyboardInterrupt:
-        print("Game terminated by user")
+            try:
+                # Update game with exception handling
+                gc.collect()
+                game.update()
+                time.sleep(game.speed)
+                
+            except MemoryError:
+                # Simple error handling - collect garbage and continue
+                print("Memory error - collecting garbage")
+                gc.collect()
+                time.sleep(0.5)
+                
+    except Exception as e:
+        # Fatal error handling
+        print(f"Error: {e}")
+        gc.collect()
+        time.sleep(1)
+
 
 if __name__ == "__main__":
+    # Extremely minimal startup with forced memory cleanup
+    gc.collect()
     main()

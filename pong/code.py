@@ -27,9 +27,9 @@ TFT_CS = board.D5  # Chip select pin
 TFT_DC = board.D16  # Data/command pin
 TFT_RESET = board.D9  # Reset pin
 
-# Minimal initial game settings
-BOARD_WIDTH = 30    # Reduced from 40 to save memory
-BOARD_HEIGHT = 12   # Reduced from 16 to save memory
+# Minimal initial game settings - further reduced for extreme memory constraints
+BOARD_WIDTH = 16    # Drastically reduced width to avoid 256-byte allocations
+BOARD_HEIGHT = 8    # Drastically reduced height to avoid 256-byte allocations
 GAME_DELAY = 0.07   # Delay between frames
 
 
@@ -164,16 +164,24 @@ class PongGame:
         gc.collect()
     
     def create_minimal_board(self):
-        """Create a new game board with absolute minimal memory usage"""
+        """Create a new game board with ultra minimal memory usage - avoiding 256 byte allocations"""
         # Force garbage collection before creating board
         gc.collect()
         
-        # Create empty board - one row at a time to reduce memory pressure
+        # Create empty board - one row at a time with individual cell creation
         board = []
         for _ in range(BOARD_HEIGHT):
-            # Use single operation to create each row
-            board.append([EMPTY_CHAR] * BOARD_WIDTH)
-            # Force collection after each row to minimize peak usage
+            # Create an empty row first
+            row = []
+            # Add cells one by one to avoid large allocations
+            for _ in range(BOARD_WIDTH):
+                row.append(EMPTY_CHAR)
+                # Force collection periodically
+                if random.random() < 0.1:  # 10% chance to collect
+                    gc.collect()
+            # Append the row to the board
+            board.append(row)
+            # Force collection after each row
             gc.collect()
         
         # Store the board
@@ -183,21 +191,27 @@ class PongGame:
         gc.collect()
     
     def update_board(self):
-        """Ultra minimal board update for very low memory usage"""
+        """Ultra minimal board update for very low memory usage - avoiding 256 byte allocations"""
         # Force garbage collection before board update
         gc.collect()
         
         # Make sure board exists
         if self.board is None:
             self.create_minimal_board()
+            return  # Return early to avoid additional memory usage in the same frame
         
         # Clear the board (in-place to avoid reallocating)
+        # Process very small chunks at a time to avoid large memory allocations
         for y in range(BOARD_HEIGHT):
-            for x in range(BOARD_WIDTH):
-                self.board[y][x] = EMPTY_CHAR
-            # Collect after each row
-            if y % 4 == 0:
+            # Process cells in very small chunks (4 at a time)
+            for chunk_start in range(0, BOARD_WIDTH, 4):
+                chunk_end = min(chunk_start + 4, BOARD_WIDTH)
+                for x in range(chunk_start, chunk_end):
+                    self.board[y][x] = EMPTY_CHAR
+                # Force collection after each small chunk
                 gc.collect()
+            # Also collect after each row
+            gc.collect()
                 
         # Add minimal center net
         center_x = BOARD_WIDTH // 2
@@ -425,7 +439,7 @@ class PongGame:
                 self.player_y += PADDLE_SPEED
     
     def display_game(self):
-        """Ultra minimal display method for extremely low memory usage"""
+        """Ultra minimal display with micro-chunking to avoid 256 byte allocations"""
         # Force garbage collection before display
         gc.collect()
         
@@ -434,34 +448,47 @@ class PongGame:
             splash = displayio.Group()
             self.display.show(splash)
             
-            # Only display 2 rows at a time to minimize memory usage
-            for y_chunk in range(0, BOARD_HEIGHT, 2):
-                # Collect garbage between chunks
+            # Process one row at a time
+            for y in range(BOARD_HEIGHT):
+                # Force garbage collection before each row
                 gc.collect()
                 
-                # Process two rows at a time
-                for y_offset in range(2):
-                    y = y_chunk + y_offset
-                    if y < BOARD_HEIGHT:
-                        # Join the row into a string
-                        row_text = ''.join(self.board[y])
+                # Process row in small chunks to avoid large allocations
+                # Break each row into chunks of 4 characters
+                for chunk_start in range(0, BOARD_WIDTH, 4):
+                    # Force collection before each chunk
+                    gc.collect()
+                    
+                    # Determine chunk size (last chunk might be smaller)
+                    chunk_end = min(chunk_start + 4, BOARD_WIDTH)
+                    chunk_size = chunk_end - chunk_start
+                    
+                    # Create text for just this small chunk
+                    chunk_text = ""
+                    for x in range(chunk_start, chunk_end):
+                        chunk_text += self.board[y][x]
+                    
+                    # Create a label for just this small chunk
+                    try:
+                        # Calculate position for this chunk
+                        chunk_x = LEFT_MARGIN + (chunk_start * 6)  # Assuming 6 pixels per character
                         
-                        # Create a label for this row
-                        try:
-                            row_label = label.Label(
-                                terminalio.FONT,
-                                text=row_text,
-                                x=LEFT_MARGIN,
-                                y=TOP_MARGIN + y * LINE_HEIGHT,
-                                color=0x00FF00
-                            )
-                            splash.append(row_label)
-                        except MemoryError:
-                            # If we can't create the label, just continue
-                            pass
-                
-                # Force garbage collection after each chunk
-                gc.collect()
+                        # Create a label with minimal text
+                        chunk_label = label.Label(
+                            terminalio.FONT,
+                            text=chunk_text,
+                            x=chunk_x,
+                            y=TOP_MARGIN + y * LINE_HEIGHT,
+                            color=0x00FF00
+                        )
+                        splash.append(chunk_label)
+                        
+                        # Force collection after adding each chunk
+                        gc.collect()
+                    except MemoryError:
+                        # If we can't create the label, just continue
+                        print(f"Memory error rendering y={y}, x={chunk_start}")
+                        gc.collect()
         
         except Exception as e:
             # Simple error handling
@@ -588,47 +615,96 @@ def define_game_constants():
 
 
 def main():
-    """Minimal main function to reduce startup memory usage"""
-    # Force garbage collection to start with a clean slate
-    gc.collect()
-    
+    """Ultra minimal main function to avoid all 256 byte allocations"""
+    # Repeatedly force garbage collection at startup
+    for _ in range(5):
+        gc.collect()
+        time.sleep(0.1)
+        
     try:
-        # Step 1: Initialize display with minimal overhead
-        print("Initializing display...")
+        print("Starting up with minimal memory use...")
+        
+        # Step 1: Initialize display with absolute minimal overhead
+        print("Display init...")
+        display = None
+        gc.collect()
         display = initialise_display()
         
-        # Step 2: Define constants after display init succeeds
+        # Force collection after display init
+        for _ in range(3):
+            gc.collect()
+            time.sleep(0.1)
+        
+        # Step 2: Define constants only after sufficient collection
+        print("Constants...")
         define_game_constants()
         
-        # Step 3: Create game only after constants are defined
-        print("Starting game...")
-        gc.collect()  # Force collection before game creation
+        # More aggressive collection
+        for _ in range(3):
+            gc.collect()
+            time.sleep(0.1)
+        
+        # Step 3: Create game with minimum memory footprint
+        print("Creating game...")
+        game = None  # Ensure no reference exists
+        gc.collect()
         game = PongGame(display)
         
-        # Step 4: Simple game loop with basic error handling
+        # Final pre-game collection
+        for _ in range(3):
+            gc.collect()
+            time.sleep(0.1)
+        
+        print("Game ready!")
+        
+        # Step 4: Super conservative game loop with extreme error handling
+        update_count = 0
+        
         while True:
             try:
-                # Update game with a try/except block
+                # Update only every other frame at first to reduce memory pressure
+                update_count += 1
+                
+                # Force collection every frame
                 gc.collect()
+                
+                # Initially only update every other frame
+                if update_count < 20 and update_count % 2 == 0:
+                    time.sleep(GAME_DELAY)
+                    continue
+                
+                # Update game with minimal memory usage
                 game.update()
+                
+                # Brief delay based on game speed
                 time.sleep(GAME_DELAY)
                 
-                # Handle game over state
+                # Handle game over with minimal operations
                 if game.game_over:
+                    print("Game over - restarting")
+                    gc.collect()
                     time.sleep(2)
                     game.restart_game()
                     
-            except MemoryError:
-                # Simple error handling - just collect and continue
-                print("Memory error - collecting garbage")
+            except MemoryError as e:
+                # Detailed error reporting and very aggressive collection
+                print(f"Memory error: {e}")
+                for _ in range(5):
+                    gc.collect()
+                    time.sleep(0.2)
+                
+            except Exception as e:
+                # Other error handling
+                print(f"Error: {e}")
                 gc.collect()
                 time.sleep(0.5)
                 
     except Exception as e:
-        # Fatal error handling
-        print(f"Error: {e}")
-        gc.collect()
-        time.sleep(1)
+        # Fatal error handling with detailed reporting
+        print(f"Fatal error: {e}")
+        for _ in range(5):
+            gc.collect()
+            time.sleep(0.5)
 
 
 if __name__ == "__main__":

@@ -27,9 +27,9 @@ TFT_CS = board.D5  # Chip select pin
 TFT_DC = board.D16  # Data/command pin
 TFT_RESET = board.D9  # Reset pin
 
-# Minimal game settings
-GRID_WIDTH = 24    # Reduced width for lower memory usage
-GRID_HEIGHT = 12   # Reduced height for lower memory usage
+# Minimal game settings - drastic reduction to avoid any 256-byte allocations
+GRID_WIDTH = 16    # Drastically reduced width to avoid memory errors
+GRID_HEIGHT = 8    # Drastically reduced height to avoid memory errors
 GAME_SPEED = 0.15  # Delay between frames
 
 # Directions (dx, dy)
@@ -163,10 +163,19 @@ class SnakeGame:
         self.speed = GAME_SPEED
         self.frames = 0
         
-        # Create grid one row at a time to reduce memory pressure
+        # Create grid with ultra-minimal memory allocations - cell by cell
         self.grid = []
         for _ in range(GRID_HEIGHT):
-            self.grid.append([EMPTY_CHAR] * GRID_WIDTH)
+            # Create an empty row first
+            row = []
+            # Add individual cells to avoid any large allocations
+            for _ in range(GRID_WIDTH):
+                row.append(' ')  # Use a literal space to avoid even variable reference
+                # Force periodic collection during cell creation
+                if random.random() < 0.1:  # 10% chance per cell
+                    gc.collect()
+            # Append the row
+            self.grid.append(row)
             # Force collection after each row
             gc.collect()
         
@@ -215,47 +224,95 @@ class SnakeGame:
             self.food_pos = random.choice(empty_cells)
     
     def update_grid(self):
-        """Update the grid based on current game state"""
-        # Clear the grid (except border)
-        for y in range(1, GRID_HEIGHT-1):
-            for x in range(1, GRID_WIDTH-1):
-                self.grid[y][x] = EMPTY_CHAR
+        """Ultra-minimal grid update with micro-allocations to avoid 256-byte blocks"""
+        # Force collection before update
+        gc.collect()
         
-        # Place food - just use one cell for food to avoid double appearance
+        # Clear the grid in micro-chunks (except border)
+        for y in range(1, GRID_HEIGHT-1):
+            # Process 4 cells at a time
+            for chunk_start in range(1, GRID_WIDTH-1, 4):
+                chunk_end = min(chunk_start + 4, GRID_WIDTH-1)
+                # Update cells in this micro-chunk
+                for x in range(chunk_start, chunk_end):
+                    self.grid[y][x] = ' '  # Use literal space to avoid even variable reference
+                # Force collection after each chunk
+                gc.collect()
+        
+        # Place food with careful bounds checking
         if self.food_pos:
             food_x, food_y = self.food_pos
-            if HORIZONTAL_DOUBLE_WIDTH:
-                # Convert logical x to display x (multiply by 2)
-                display_x = food_x * 2
-                # Place food in a single cell for better appearance
-                if 0 <= food_y < GRID_HEIGHT and 0 <= display_x < GRID_WIDTH-1:
-                    self.grid[food_y][display_x] = FOOD_CHAR
-            else:
-                # Normal placement for non-double width
-                if 0 <= food_y < GRID_HEIGHT and 0 <= food_x < GRID_WIDTH:
-                    self.grid[food_y][food_x] = FOOD_CHAR
-        
-        # Place snake
-        for i, (x, y) in enumerate(self.snake):
-            if 0 <= y < GRID_HEIGHT:
+            # Force collection before food placement
+            gc.collect()
+            
+            # Extra cautious bounds checking
+            if 0 <= food_y < GRID_HEIGHT:
                 if HORIZONTAL_DOUBLE_WIDTH:
-                    # Check if this segment is moving horizontally
-                    is_horizontal = False
-                    if i < len(self.snake) - 1:
-                        next_x, next_y = self.snake[i+1]
-                        is_horizontal = (y == next_y)  # Same y means horizontal movement
-                    
                     # Convert logical x to display x (multiply by 2)
-                    display_x = x * 2
-                    
-                    if 0 <= display_x < GRID_WIDTH-1:  # Ensure we don't go out of bounds
-                        # Place the snake segment as two consecutive blocks for horizontal
-                        self.grid[y][display_x] = SNAKE_HEAD_CHAR if i == 0 else SNAKE_BODY_CHAR
-                        self.grid[y][display_x+1] = SNAKE_HEAD_CHAR if i == 0 else SNAKE_BODY_CHAR
+                    display_x = food_x * 2
+                    # Place food in a single cell with strict bounds checking
+                    if 0 <= display_x < GRID_WIDTH:
+                        try:
+                            self.grid[food_y][display_x] = FOOD_CHAR
+                        except IndexError:
+                            # Fail silently if we hit an index error
+                            pass
                 else:
-                    # Normal placement for non-double width
-                    if 0 <= x < GRID_WIDTH:
+                    # Normal placement with strict bounds checking
+                    if 0 <= food_x < GRID_WIDTH:
+                        try:
+                            self.grid[food_y][food_x] = FOOD_CHAR
+                        except IndexError:
+                            # Fail silently if we hit an index error
+                            pass
+        
+        # Force collection before snake placement
+        gc.collect()
+        
+        # Place snake in chunks to avoid large memory operations
+        for i in range(len(self.snake)):
+            # Force collection periodically during snake placement
+            if i % 2 == 0:
+                gc.collect()
+                
+            # Get snake segment with bounds checking
+            try:
+                x, y = self.snake[i]
+            except IndexError:
+                continue
+                
+            # Skip if out of bounds
+            if not (0 <= y < GRID_HEIGHT):
+                continue
+                
+            # Place segment with double-width handling
+            if HORIZONTAL_DOUBLE_WIDTH:
+                # Convert logical x to display x
+                display_x = x * 2
+                
+                # Bounds check
+                if 0 <= display_x < GRID_WIDTH:
+                    try:
+                        # Place first part of segment
+                        self.grid[y][display_x] = SNAKE_HEAD_CHAR if i == 0 else SNAKE_BODY_CHAR
+                        
+                        # Place second part if in bounds
+                        if display_x + 1 < GRID_WIDTH:
+                            self.grid[y][display_x+1] = SNAKE_HEAD_CHAR if i == 0 else SNAKE_BODY_CHAR
+                    except IndexError:
+                        # Fail silently on index errors
+                        pass
+            else:
+                # Normal placement with bounds checking
+                if 0 <= x < GRID_WIDTH:
+                    try:
                         self.grid[y][x] = SNAKE_HEAD_CHAR if i == 0 else SNAKE_BODY_CHAR
+                    except IndexError:
+                        # Fail silently on index errors
+                        pass
+                        
+        # Final collection after grid update
+        gc.collect()
     
     def move_snake(self):
         """Move the snake in the current direction"""
@@ -494,35 +551,76 @@ class SnakeGame:
         self.create_food()
     
     def display_game(self):
-        """Display the current game state on the screen"""
-        splash = displayio.Group()
-        self.display.show(splash)
+        """Ultra-minimal display with micro-chunking to avoid 256-byte allocations"""
+        # Force garbage collection before display
+        gc.collect()
         
-        # Display game grid
-        for y, row in enumerate(self.grid):
-            line = ''.join(row)
-            row_color = COLOR_SNAKE  # Default color
+        try:
+            # Create a minimal display group
+            splash = displayio.Group()
+            self.display.show(splash)
             
-            # Create text area for this row
-            text_area = label.Label(
-                terminalio.FONT,
-                text=line,
-                x=LEFT_MARGIN + 20,  # Add extra margin to help center the narrower grid
-                y=TOP_MARGIN + y * 14,  # Adjust line height as needed
-                color=row_color
-            )
-            splash.append(text_area)
-        
-        # Display score and high score at the bottom
-        score_text = f"Score: {self.score} - High: {self.high_score}"
-        score_area = label.Label(
-            terminalio.FONT,
-            text=score_text,
-            x=LEFT_MARGIN + 20,  # Match the extra margin
-            y=TOP_MARGIN + GRID_HEIGHT * 14 + 10,  # Below the grid
-            color=COLOR_BORDER
-        )
-        splash.append(score_area)
+            # Display grid one micro-chunk at a time
+            for y in range(GRID_HEIGHT):
+                # Force collection before each row
+                gc.collect()
+                
+                # Process the row in 4-character chunks
+                for chunk_start in range(0, GRID_WIDTH, 4):
+                    # Force collection before each chunk
+                    gc.collect()
+                    
+                    # Calculate the end of this chunk
+                    chunk_end = min(chunk_start + 4, GRID_WIDTH)
+                    
+                    # Create a minimal text string for just this chunk
+                    chunk_text = ""
+                    for x in range(chunk_start, chunk_end):
+                        chunk_text += self.grid[y][x]
+                    
+                    # Calculate position for this chunk
+                    chunk_x = LEFT_MARGIN + (chunk_start * 6)  # 6 pixels per character
+                    
+                    try:
+                        # Create a minimal label for just this small chunk
+                        chunk_label = label.Label(
+                            terminalio.FONT,
+                            text=chunk_text,
+                            x=chunk_x,
+                            y=TOP_MARGIN + y * 14,
+                            color=0x00FF00  # Green
+                        )
+                        splash.append(chunk_label)
+                        
+                        # Force collection after creating each label
+                        gc.collect()
+                    except MemoryError:
+                        # If memory error, skip this chunk and continue
+                        pass
+            
+            # Display minimal score instead of formatted text
+            try:
+                # Just show simple score without formatting to minimize memory use
+                simple_score = f"S:{self.score}"
+                
+                score_label = label.Label(
+                    terminalio.FONT,
+                    text=simple_score,
+                    x=LEFT_MARGIN,
+                    y=TOP_MARGIN + GRID_HEIGHT * 14 + 10,
+                    color=0xFFFFFF  # White
+                )
+                splash.append(score_label)
+            except MemoryError:
+                # If we can't show score, just continue
+                pass
+                
+        except Exception as e:
+            # Handle any errors silently to keep game running
+            print(f"Display error: {e}")
+            
+        # Final garbage collection
+        gc.collect()
     
     def update(self):
         """Update the game state"""
@@ -539,44 +637,89 @@ class SnakeGame:
         self.display_game()
 
 def main():
-    """Minimal main function with deferred initialization to reduce memory usage"""
-    # Initial garbage collection
-    gc.collect()
-    
+    """Ultra minimal main function to avoid all 256 byte allocations"""
+    # Repeatedly force garbage collection at startup
+    for _ in range(5):
+        gc.collect()
+        time.sleep(0.1)
+        
     try:
-        # Step 1: Initialize display with minimal memory usage
-        print("Initializing display...")
+        print("Starting with extreme memory conservation...")
+        
+        # Step 1: Initialize display with absolute minimal overhead
+        print("Display init...")
+        display = None
+        gc.collect()
         display = initialise_display()
         
-        # Step 2: Define constants only after display init succeeds
-        print("Defining game constants...")
-        define_game_constants()
-        gc.collect()
+        # Force aggressive collection after display init
+        for _ in range(3):
+            gc.collect()
+            time.sleep(0.1)
         
-        # Step 3: Create game only after constants are defined
-        print("Starting game...")
-        gc.collect()  # Force collection before game creation
+        # Step 2: Define constants only after sufficient collection
+        print("Constants...")
+        define_game_constants()
+        
+        # More aggressive collection
+        for _ in range(3):
+            gc.collect()
+            time.sleep(0.1)
+        
+        # Step 3: Create game with minimum memory footprint
+        print("Creating game...")
+        game = None  # Ensure no reference exists
+        gc.collect()
         game = SnakeGame(display)
         
-        # Step 4: Simple game loop with basic error handling
+        # Final pre-game collection
+        for _ in range(3):
+            gc.collect()
+            time.sleep(0.1)
+        
+        print("Game ready!")
+        
+        # Step 4: Super conservative game loop with extreme error handling
+        update_count = 0
+        
         while True:
             try:
-                # Update game with exception handling
+                # Update count for gradual startup
+                update_count += 1
+                
+                # Force collection every frame
                 gc.collect()
+                
+                # Initially only update every other frame to reduce memory pressure
+                if update_count < 20 and update_count % 2 == 0:
+                    time.sleep(game.speed)
+                    continue
+                
+                # Update game with minimal memory usage
                 game.update()
+                
+                # Brief delay based on game speed
                 time.sleep(game.speed)
                 
-            except MemoryError:
-                # Simple error handling - collect garbage and continue
-                print("Memory error - collecting garbage")
+            except MemoryError as e:
+                # Detailed error reporting and very aggressive collection
+                print(f"Memory error: {e}")
+                for _ in range(5):
+                    gc.collect()
+                    time.sleep(0.2)
+                
+            except Exception as e:
+                # Other error handling
+                print(f"Error: {e}")
                 gc.collect()
                 time.sleep(0.5)
                 
     except Exception as e:
-        # Fatal error handling
-        print(f"Error: {e}")
-        gc.collect()
-        time.sleep(1)
+        # Fatal error handling with detailed reporting
+        print(f"Fatal error: {e}")
+        for _ in range(5):
+            gc.collect()
+            time.sleep(0.5)
 
 
 if __name__ == "__main__":

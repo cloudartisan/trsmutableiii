@@ -96,6 +96,33 @@ cp -r pong/* /Volumes/CIRCUITPY/
 
 The auto-reload should kick in and the program should start running on the device.
 
+### snake
+
+This script implements the classic Snake game that originated in the late 1970s. The player controls a snake that grows longer as it eats food, with the challenge being to avoid colliding with the walls or the snake's own body.
+
+In this implementation, the snake is controlled by an AI algorithm that:
+- Seeks out food using pathfinding strategies
+- Avoids collisions with walls and itself
+- Occasionally makes random moves to make gameplay more interesting
+- Increases speed as the snake grows longer
+
+Features:
+- Classic green snake on a black background
+- Border walls that the snake must avoid
+- Score display showing how much food the snake has eaten
+- Auto-play mode where the snake follows its own path
+- Progressive difficulty as the snake grows longer
+
+#### Install
+
+To install the Snake game, copy the _content_ of the `snake` directory to the `CIRCUITPY` drive on your device:
+
+```bash
+cp -r snake/* /Volumes/CIRCUITPY/
+```
+
+The auto-reload should kick in and the program should start running on the device.
+
 #### Local Simulation
 
 You can simulate any TRS-80 Model III program on your local machine without physical hardware using the universal simulator:
@@ -144,6 +171,10 @@ The project is structured as follows:
 
 - `/pong/` - Classic Pong Game
   - `code.py` - Pong game implementation with AI and auto-play
+  - `__init__.py` - Package initialization file
+
+- `/snake/` - Classic Snake Game
+  - `code.py` - Snake game implementation with AI auto-play
   - `__init__.py` - Package initialization file
 
 The root directory contains the main scripts:
